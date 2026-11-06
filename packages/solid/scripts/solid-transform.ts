@@ -1,10 +1,5 @@
-import { transformAsync } from "@babel/core"
-// @ts-expect-error - Types not important.
-import ts from "@babel/preset-typescript"
-// @ts-expect-error - Types not important.
-import moduleResolver from "babel-plugin-module-resolver"
-// @ts-expect-error - Types not important.
-import solid from "babel-preset-solid"
+import { transformAsync } from "@solidjs/compiler"
+import { init, parse } from "es-module-lexer"
 
 export type ResolveImportPath = (specifier: string) => string | null
 
@@ -42,42 +37,36 @@ export function resolveNodeSolidRuntimeImport(specifier: string): string | null 
 
 export async function transformSolidSource(code: string, options: TransformSolidSourceOptions): Promise<string> {
   const filename = stripQueryAndHash(options.filename)
-  const plugins = options.resolvePath
-    ? [
-        [
-          moduleResolver,
-          {
-            resolvePath(specifier: string) {
-              return options.resolvePath?.(specifier) ?? specifier
-            },
-          },
-        ],
-      ]
-    : []
-
-  const presets = []
 
   if (jsxPattern.test(filename)) {
-    presets.push([
-      solid,
-      {
+    code = (
+      await transformAsync(code, {
+        filename,
         moduleName: options.moduleName ?? "@opentui/solid",
         generate: "universal",
-      },
-    ])
+      })
+    ).code
   }
 
+  // The Solid compiler keeps TypeScript syntax.
   if (tsPattern.test(filename)) {
-    presets.push([ts])
+    code = new Bun.Transpiler({ loader: "ts", target: "bun" }).transformSync(code)
   }
 
-  const transformed = await transformAsync(code, {
-    filename,
-    configFile: false,
-    babelrc: false,
-    plugins,
-    presets,
-  })
+  return options.resolvePath ? rewriteImports(code, options.resolvePath) : code
+}
 
-  return transformed?.code ?? code
+async function rewriteImports(code: string, resolvePath: ResolveImportPath): Promise<string> {
+  await init
+  const [imports] = parse(code)
+  let output = ""
+  let last = 0
+  for (const entry of imports) {
+    if (!entry.specifier) continue
+    const next = resolvePath(entry.specifier)
+    if (!next || next === entry.specifier) continue
+    output += code.slice(last, entry.start) + (entry.type === "dynamic" ? JSON.stringify(next) : next)
+    last = entry.end
+  }
+  return output + code.slice(last)
 }

@@ -6,7 +6,8 @@ import {
   type ScrollbackSnapshot,
   type ScrollbackWriter,
 } from "@opentui/core"
-import { createSignal, type JSX } from "solid-js"
+import { createSignal } from "solid-js"
+import type { JSX } from "../jsx-runtime.js"
 import { RendererContext } from "./elements/index.js"
 import { _render as renderInternal, createComponent } from "./reconciler.js"
 
@@ -161,7 +162,7 @@ export function createScrollbackWriter(
     try {
       dispose = renderInternal(
         () =>
-          createComponent(RendererContext.Provider, {
+          createComponent(RendererContext as any, {
             get value() {
               return snapshotRenderer.renderer
             },

@@ -55,22 +55,20 @@
   },
   "devDependencies": {
     "@opentui/keymap": "workspace:*",
-    "@types/babel__core": "7.20.5",
     "@types/bun": "1.4.1",
     "@types/node": "^24.0.0",
-    "solid-js": "1.9.16",
+    "solid-js": "2.0.0-rc.21",
     "typescript": "^5"
   },
   "dependencies": {
-    "@babel/core": "7.29.7",
-    "@babel/preset-typescript": "7.27.1",
     "@opentui/core": "workspace:*",
-    "babel-plugin-module-resolver": "5.0.2",
-    "babel-preset-solid": "1.9.16",
+    "@solidjs/compiler": "2.0.0-rc.21",
+    "@solidjs/universal": "2.0.0-rc.21",
     "entities": "7.0.1",
+    "es-module-lexer": "3.0.4",
     "s-js": "^0.4.9"
   },
   "peerDependencies": {
-    "solid-js": "^1.9.12"
+    "solid-js": "2.0.0-rc.21"
   }
 }

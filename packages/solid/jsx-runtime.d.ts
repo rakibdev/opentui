@@ -16,7 +16,7 @@ import type {
   TextProps,
   VideoProps,
 } from "./src/types/elements.js"
-import type { JSX as SolidJSX } from "solid-js"
+import type { Element as SolidElement } from "solid-js"
 
 type JsxComponent = (props: Record<string, unknown>) => unknown
 
@@ -26,7 +26,7 @@ export declare function jsxDEV(type: string | JsxComponent, props?: Record<strin
 export declare function Fragment(props: { children?: JSX.Element }): JSX.Element
 
 export declare namespace JSX {
-  type Element = SolidJSX.Element
+  type Element = SolidElement
 
   interface IntrinsicElements extends ExtendedIntrinsicElements<OpenTUIComponents> {
     box: BoxProps

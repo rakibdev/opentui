@@ -38,7 +38,7 @@ class TextNode extends TextNodeRenderable {
 export type DomNode = BaseRenderable
 
 /** @internal Portal allocation target, separate from the renderer exposed to application hooks. */
-export const RenderableContext = createContext<() => RenderContext>()
+export const RenderableContext = createContext<(() => RenderContext) | null>(null)
 
 /**
  * Gets the id of a node, or content if it's a text chunk.
@@ -187,9 +187,10 @@ const {
   spread,
   setProp,
   mergeProps,
-  use,
+  ref,
+  applyRef,
 } = createRenderer<DomNode>({
-  createElement(tagName: string): DomNode {
+  createElement(tagName: string, staticProps?: Record<string, unknown>): DomNode {
     log("Creating element:", tagName)
     const id = getNextId(tagName)
     const solidRenderer = useContext(RenderableContext)?.() ?? useContext(RendererContext)
@@ -208,22 +209,25 @@ const {
         element.source = undefined
       })
     }
+    for (const name in staticProps) setProp(element, name, staticProps[name])
     log("Element created with id:", id)
     return element
   },
 
-  // The compiler escapes static JSX before calling createTextNode directly.
-  createTextNode: (value) => _createTextNode(value, true),
+  // The compiler decodes static JSX entities itself. Empty text is a null placeholder: text cannot sit outside <text>.
+  createTextNode: (value) => (value === "" ? createSlotNode() : _createTextNode(value, false)),
 
-  createDynamicTextNode: (value) => _createTextNode(value, false),
-
-  createSlotNode,
+  createSentinel: createSlotNode,
 
   replaceText(textNode: TextNode, value: string): void {
     log("Replacing text:", value, "in node:", logId(textNode))
 
-    if (!(textNode instanceof TextNode)) return
-    textNode.replace(value, 0)
+    if (textNode instanceof TextNode) return textNode.replace(value, 0)
+    // Swap the empty placeholder for real text.
+    const parent = _getParentNode(textNode)
+    if (!parent) return
+    _insertNode(parent, _createTextNode(value, false), textNode)
+    _removeNode(parent, textNode)
   },
 
   setProperty(node: DomNode, name: string, value: any, prev: any): void {
@@ -442,15 +446,16 @@ export {
   spread,
   setProp,
   mergeProps,
-  use,
+  ref,
+  applyRef,
 }
 
 /** @internal Start an independent root without inheriting a Portal allocation target. */
 export function _render(code: () => DomNode, root: DomNode): () => void {
   return renderRoot(
     () =>
-      RenderableContext.Provider({
-        value: root instanceof Renderable ? () => root.ctx : undefined,
+      RenderableContext({
+        value: root instanceof Renderable ? () => root.ctx : null,
         get children() {
           return code() as any
         },

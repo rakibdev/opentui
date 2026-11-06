@@ -45,7 +45,7 @@ const mountSolidRoot = (renderer: CliRenderer, node: () => JSX.Element) => {
   try {
     dispose = renderInternal(
       () =>
-        createComponent(RendererContext.Provider, {
+        createComponent(RendererContext as any, {
           get value() {
             return renderer
           },

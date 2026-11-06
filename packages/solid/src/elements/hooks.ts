@@ -9,7 +9,7 @@ import {
   type KeyEvent,
   type TimelineOptions,
 } from "@opentui/core"
-import { createContext, createEffect, createSignal, onCleanup, onMount, useContext, type Accessor } from "solid-js"
+import { createContext, createEffect, createSignal, onCleanup, onSettled, useContext, type Accessor } from "solid-js"
 
 export const RendererContext = createContext<CliRenderer>()
 
@@ -26,7 +26,7 @@ export const useRenderer = () => {
 export const onResize = (callback: (width: number, height: number) => void) => {
   const renderer = useRenderer()
 
-  onMount(() => {
+  onSettled(() => {
     renderer.on("resize", callback)
   })
 
@@ -42,10 +42,10 @@ export const onAnimationTick = (
   options?: AnimationTickOptions,
 ) => {
   const renderer = useRenderer()
-  createEffect(() => {
-    const rate = typeof fps === "function" ? fps() : fps
-    if (rate !== undefined) onCleanup(renderer.onAnimationTick(rate, callback, options))
-  })
+  createEffect(
+    () => (typeof fps === "function" ? fps() : fps),
+    (rate) => (rate === undefined ? undefined : renderer.onAnimationTick(rate, callback, options)),
+  )
 }
 
 export const useTerminalDimensions = () => {
@@ -88,7 +88,7 @@ export interface UseKeyboardOptions {
 export const useKeyboard = (callback: (key: KeyEvent) => void, options?: UseKeyboardOptions) => {
   const renderer = useRenderer()
   const keyHandler = renderer.keyInput
-  onMount(() => {
+  onSettled(() => {
     keyHandler.on("keypress", callback)
     if (options?.release) {
       keyHandler.on("keyrelease", callback)
@@ -106,7 +106,7 @@ export const useKeyboard = (callback: (key: KeyEvent) => void, options?: UseKeyb
 export const usePaste = (callback: (event: PasteEvent) => void) => {
   const renderer = useRenderer()
   const keyHandler = renderer.keyInput
-  onMount(() => {
+  onSettled(() => {
     keyHandler.on("paste", callback)
   })
 
@@ -123,7 +123,7 @@ export const useKeyHandler = useKeyboard
 export const onFocus = (callback: () => void) => {
   const renderer = useRenderer()
 
-  onMount(() => {
+  onSettled(() => {
     renderer.on("focus", callback)
   })
 
@@ -135,7 +135,7 @@ export const onFocus = (callback: () => void) => {
 export const onBlur = (callback: () => void) => {
   const renderer = useRenderer()
 
-  onMount(() => {
+  onSettled(() => {
     renderer.on("blur", callback)
   })
 
@@ -147,7 +147,7 @@ export const onBlur = (callback: () => void) => {
 export const useSelectionHandler = (callback: (selection: Selection) => void) => {
   const renderer = useRenderer()
 
-  onMount(() => {
+  onSettled(() => {
     renderer.on("selection", callback)
   })
 
@@ -160,7 +160,7 @@ export const useTimeline = (options: TimelineOptions = {}): Timeline => {
   const engine = getTimelineEngine(useRenderer())
   const timeline = new Timeline(options)
 
-  onMount(() => {
+  onSettled(() => {
     if (options.autoplay !== false) {
       timeline.play()
     }

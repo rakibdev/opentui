@@ -9,7 +9,8 @@ import {
   type SlotMode,
   type SlotRegistryOptions,
 } from "@opentui/core"
-import { children, createMemo, createSignal, ErrorBoundary, For, onCleanup, splitProps, type JSX } from "solid-js"
+import { children, createMemo, createSignal, Errored, For, omit, onCleanup } from "solid-js"
+import type { JSX } from "../../jsx-runtime.js"
 
 export type { SlotMode }
 type SlotMap = Record<string, object>
@@ -83,13 +84,8 @@ export function Slot<
   TContext extends PluginContext = PluginContext,
   K extends keyof TSlots = keyof TSlots,
 >(props: SolidSlotProps<TSlots, K, TContext>): JSX.Element {
-  const [local, slotProps] = splitProps(props as SolidSlotProps<TSlots, K, TContext>, [
-    "registry",
-    "name",
-    "mode",
-    "children",
-    "pluginFailurePlaceholder",
-  ])
+  const local = props as SolidSlotProps<TSlots, K, TContext>
+  const slotProps = omit(local, "registry", "name", "mode", "children", "pluginFailurePlaceholder")
   const registry = () => local.registry
   const pluginFailurePlaceholder = () => local.pluginFailurePlaceholder
   const [version, setVersion] = createSignal(0)
@@ -204,21 +200,21 @@ export function Slot<
     }
 
     return (
-      <ErrorBoundary
-        fallback={(error: unknown) => {
+      <Errored
+        fallback={(error) => {
           const failure = registry().reportPluginError({
             pluginId: entry.id,
             slot: slotName(),
             phase: "render",
             source: "solid",
-            error,
+            error: error(),
           })
 
           return renderPluginFailurePlaceholder(failure, fallbackOnError)
         }}
       >
         {resolvedInitialRender()}
-      </ErrorBoundary>
+      </Errored>
     )
   }
 

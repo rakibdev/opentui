@@ -15,7 +15,7 @@ import type {
   TextareaProps,
   TextProps,
 } from "./src/types/elements.js"
-import type { JSX as SolidJSX } from "solid-js"
+import type { Element as SolidElement } from "solid-js"
 
 type SolidComponent = (props: Record<string, unknown>) => unknown
 
@@ -65,7 +65,7 @@ export function Fragment(props: { children?: unknown }): unknown {
 }
 
 export namespace JSX {
-  export type Element = SolidJSX.Element
+  export type Element = SolidElement
 
   export interface IntrinsicElements extends ExtendedIntrinsicElements<OpenTUIComponents> {
     box: BoxProps

@@ -9,7 +9,6 @@ import {
   type RuntimeSpecifierPreserve,
 } from "@opentui/core/runtime-plugin"
 import * as solidJsRuntime from "solid-js"
-import * as solidJsStoreRuntime from "solid-js/store"
 import * as solidRuntime from "@opentui/solid"
 import * as solidComponentsRuntime from "@opentui/solid/components"
 import * as solidJsxRuntime from "@opentui/solid/jsx-runtime"
@@ -44,7 +43,6 @@ const defaultRuntimeModules: Record<string, RuntimeModuleEntry> = {
   "@opentui/solid/jsx-runtime": solidJsxRuntime as Record<string, unknown>,
   "@opentui/solid/jsx-dev-runtime": solidJsxDevRuntime as Record<string, unknown>,
   "solid-js": solidJsRuntime as Record<string, unknown>,
-  "solid-js/store": solidJsStoreRuntime as Record<string, unknown>,
 }
 
 function normalizeRewriteKey(rewrite: RuntimePluginRewriteOptions | undefined): string {

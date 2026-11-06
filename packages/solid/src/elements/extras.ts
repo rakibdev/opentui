@@ -1,5 +1,5 @@
 import { Renderable } from "@opentui/core"
-import { createEffect, createMemo, getOwner, onCleanup, runWithOwner, splitProps, untrack } from "solid-js"
+import { createMemo, createRenderEffect, createRoot, getOwner, omit, runWithOwner, untrack } from "solid-js"
 import {
   createSlotNode,
   createElement,
@@ -26,49 +26,44 @@ import { useRenderer } from "./hooks.js"
 export function Portal(props: { mount?: DomNode; ref?: (el: {}) => void; children: JSX.Element }): JSX.Element {
   const renderer = useRenderer()
 
-  const marker = createSlotNode(),
-    owner = getOwner()
-  let content: undefined | (() => JSX.Element)
+  const marker = createSlotNode()
   let container: DomNode | undefined
 
-  createEffect(
-    () => {
-      // Wait for refs, then validate the next mount before the insertion effect cleans up the current one.
-      const mount = createMemo(() => {
-        const el = props.mount || renderer.root
-        const scene = el instanceof Renderable ? el.ctx.nativeScene : renderer.nativeScene
-        const currentScene = container instanceof Renderable ? container.ctx.nativeScene : renderer.nativeScene
-        if (container && scene !== currentScene && container.getChildrenCount() !== 0) {
-          throw new Error("Cannot retarget a Portal with existing nodes between native scenes")
-        }
-        return el
-      })
-      const context = () => {
-        // Read pending mounts synchronously without subscribing JSX creation to future target changes.
-        const el = untrack(mount)
-        return el instanceof Renderable && el.ctx.nativeScene !== renderer.nativeScene ? el.ctx : renderer
-      }
-      createEffect(
-        () => {
-          const el = mount()
-          content ||= runWithOwner(
-            owner,
-            () =>
-              RenderableContext.Provider({
-                value: context,
-                get children() {
-                  return props.children
-                },
-              }) as unknown as () => JSX.Element,
-          )
-          let nextContainer!: DomNode
-          RenderableContext.Provider({
-            value: context,
-            get children() {
-              nextContainer = createElement("box")
-              return undefined
-            },
-          })
+  // Validate the next mount before the insertion effect cleans up the current one.
+  const mount = createMemo(() => {
+    const el = props.mount || renderer.root
+    const scene = el instanceof Renderable ? el.ctx.nativeScene : renderer.nativeScene
+    const currentScene = container instanceof Renderable ? container.ctx.nativeScene : renderer.nativeScene
+    if (container && scene !== currentScene && container.getChildrenCount() !== 0) {
+      throw new Error("Cannot retarget a Portal with existing nodes between native scenes")
+    }
+    return el
+  })
+  const context = () => {
+    // Read pending mounts synchronously without subscribing JSX creation to future target changes.
+    const el = untrack(mount)
+    return el instanceof Renderable && el.ctx.nativeScene !== renderer.nativeScene ? el.ctx : renderer
+  }
+  const content = RenderableContext({
+    value: context,
+    get children() {
+      return props.children
+    },
+  }) as unknown as () => JSX.Element
+
+  createRenderEffect(
+    () => [mount(), getOwner()] as const,
+    ([el, owner]) => {
+      const dispose = runWithOwner(owner, () =>
+        createRoot((dispose) => {
+          const nextContainer = (
+            RenderableContext({
+              value: context,
+              get children() {
+                return createElement("box")
+              },
+            }) as unknown as () => DomNode
+          )()
 
           Object.defineProperty(nextContainer, "_$host", {
             get() {
@@ -79,15 +74,16 @@ export function Portal(props: { mount?: DomNode; ref?: (el: {}) => void; childre
           insert(nextContainer, content)
           el.add(nextContainer)
           container = nextContainer
-          onCleanup(() => removeNode(el, nextContainer))
           props.ref && (props as any).ref(nextContainer)
-        },
-        undefined,
-        { render: true },
+          return () => {
+            dispose()
+            removeNode(el, nextContainer)
+          }
+        }),
       )
+      return dispose
     },
-    undefined,
-    { render: true },
+    { schedule: true },
   )
   // The reconciler consumes this marker as the runtime representation of the portal JSX node.
   return marker as unknown as JSX.Element
@@ -142,6 +138,5 @@ export function createDynamic<T extends ValidComponent>(
  * @description https://docs.solidjs.com/reference/components/dynamic
  */
 export function Dynamic<T extends ValidComponent>(props: DynamicProps<T>): JSX.Element {
-  const [, others] = splitProps(props, ["component"])
-  return createDynamic(() => props.component, others as ComponentProps<T>)
+  return createDynamic(() => props.component, omit(props, "component") as ComponentProps<T>)
 }
